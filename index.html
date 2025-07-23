@@ -1,71 +1,105 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Long Videos Table</title>
+  <meta charset="UTF-8">
+  <title>Long Videos Viewer</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    thead { background: #f4f4f4; position: sticky; top: 0; }
-    .pagination { margin-top: 20px; }
-    .pagination button { padding: 8px 12px; margin: 0 2px; }
+    body {
+      margin: 0;
+      font-family: monospace;
+      background-color: #111;
+      color: #eee;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 4px;
+      text-align: left;
+    }
+    tr:nth-child(even) {
+      background-color: #1a1a1a;
+    }
+    button {
+      background: #222;
+      color: #eee;
+      border: 1px solid #555;
+      padding: 4px 8px;
+      margin: 10px 5px;
+      cursor: pointer;
+    }
+    #controls {
+      position: sticky;
+      top: 0;
+      background: #111;
+      padding: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>📺 Long YouTube Videos (Paginated)</h1>
-  <div id="table-container">Loading...</div>
-  <div class="pagination">
-    <button onclick="prevPage()">⬅ Prev</button>
-    <span id="page-info">Page 1</span>
-    <button onclick="nextPage()">Next ➡</button>
-    <input type="number" id="page-input" placeholder="Page #" style="width:60px" />
-    <button onclick="goToPage()">Go</button>
+  <div id="controls">
+    <button id="prev">← Prev</button>
+    <span id="page">Page 1</span>
+    <button id="next">Next →</button>
   </div>
+  <table id="csv-table"></table>
 
   <script>
-    const PAGE_SIZE = 10000;
+    const CSV_URL = "https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/long_videos.csv";
+    const ROWS_PER_PAGE = 10000;
     let currentPage = 0;
-    let allRows = [];
+    let csvLines = [];
 
     async function loadCSV() {
-      const res = await fetch('https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/long_videos.csv');
-      const text = await res.text();
-      allRows = text.trim().split('\n').map(r => r.split(','));
-      renderPage(0);
+      const response = await fetch(CSV_URL);
+      const text = await response.text();
+      csvLines = text.trim().split('\n');
+      renderTable();
     }
 
-    function renderPage(page) {
-      currentPage = page;
-      const start = page * PAGE_SIZE + 1;
-      const end = Math.min(start + PAGE_SIZE, allRows.length);
-      const rows = allRows.slice(start, end);
-      const header = allRows[0];
-      const html = `
-        <table>
-          <thead><tr>${header.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-          <tbody>
-            ${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}
-          </tbody>
-        </table>`;
-      document.getElementById('table-container').innerHTML = html;
-      document.getElementById('page-info').textContent = `Page ${page + 1} / ${Math.ceil((allRows.length - 1) / PAGE_SIZE)}`;
-    }
+    function renderTable() {
+      const table = document.getElementById("csv-table");
+      table.innerHTML = "";
 
-    function prevPage() {
-      if (currentPage > 0) renderPage(currentPage - 1);
-    }
+      const start = currentPage * ROWS_PER_PAGE;
+      const end = Math.min(start + ROWS_PER_PAGE, csvLines.length);
 
-    function nextPage() {
-      if ((currentPage + 1) * PAGE_SIZE < allRows.length - 1) renderPage(currentPage + 1);
-    }
-
-    function goToPage() {
-      const page = parseInt(document.getElementById('page-input').value, 10) - 1;
-      if (!isNaN(page) && page >= 0 && page * PAGE_SIZE < allRows.length) {
-        renderPage(page);
+      const header = document.createElement("tr");
+      for (const col of csvLines[0].split(",")) {
+        const th = document.createElement("th");
+        th.textContent = col;
+        header.appendChild(th);
       }
+      table.appendChild(header);
+
+      for (let i = start + 1; i < end; i++) {
+        const row = document.createElement("tr");
+        for (const cell of csvLines[i].split(",")) {
+          const td = document.createElement("td");
+          td.textContent = cell;
+          row.appendChild(td);
+        }
+        table.appendChild(row);
+      }
+
+      document.getElementById("page").textContent = `Page ${currentPage + 1} (${start + 1}–${end} of ${csvLines.length})`;
     }
+
+    document.getElementById("prev").addEventListener("click", () => {
+      if (currentPage > 0) {
+        currentPage--;
+        renderTable();
+      }
+    });
+
+    document.getElementById("next").addEventListener("click", () => {
+      if ((currentPage + 1) * ROWS_PER_PAGE < csvLines.length) {
+        currentPage++;
+        renderTable();
+      }
+    });
 
     loadCSV();
   </script>
