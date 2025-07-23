@@ -1,81 +1,175 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" >
 <head>
-<meta charset="UTF-8" />
-<title>CSV Viewer - Paginated</title>
-<style>
-  body {
-    margin: 0;
-    padding: 10px;
-    background-color: #000;
-    color: #0f0;
-    font-family: monospace;
-  }
-  #controls {
-    margin-bottom: 10px;
-  }
-  button {
-    background: #111;
-    border: 1px solid #0f0;
-    color: #0f0;
-    padding: 5px 10px;
-    cursor: pointer;
-    margin-right: 5px;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-  th, td {
-    border: 1px solid #0f0;
-    padding: 4px 6px;
-    text-align: left;
-  }
-  tr:nth-child(even) {
-    background-color: #002200;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <title>CSV Viewer - Enhanced</title>
+  <style>
+    /* Dark theme */
+    body {
+      margin: 0;
+      padding: 20px;
+      background-color: #121212;
+      color: #a0ffa0;
+      font-family: 'Fira Mono', monospace, monospace;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    h1 {
+      margin-bottom: 0.5em;
+      color: #80ff80;
+    }
+    #controls {
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    button, input[type="number"] {
+      background: #222;
+      border: 1px solid #55aa55;
+      color: #a0ffa0;
+      font-family: monospace;
+      font-size: 1rem;
+      padding: 6px 14px;
+      cursor: pointer;
+      border-radius: 4px;
+      user-select: none;
+      transition: background-color 0.2s ease;
+    }
+    button:hover:not(:disabled) {
+      background: #338833;
+      border-color: #66cc66;
+    }
+    button:disabled {
+      color: #444;
+      border-color: #444;
+      cursor: default;
+    }
+    input[type="number"] {
+      width: 80px;
+      text-align: center;
+    }
+    #loading {
+      font-style: italic;
+      color: #66bb66;
+      min-height: 1.2em;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      table-layout: fixed;
+      word-break: break-word;
+    }
+    th, td {
+      border: 1px solid #338833;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: middle;
+    }
+    thead {
+      background-color: #224422;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tbody tr:hover {
+      background-color: #335533;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      th, td {
+        font-size: 11px;
+        padding: 4px 6px;
+      }
+      button, input[type="number"] {
+        padding: 4px 8px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
 </head>
 <body>
+  <h1>Long Videos CSV Viewer</h1>
 
-<div id="controls">
-  <button id="prevBtn">Prev</button>
-  <span id="pageInfo">Page 1</span>
-  <button id="nextBtn">Next</button>
-</div>
+  <div id="controls">
+    <button id="prevBtn" disabled>Prev</button>
+    <button id="nextBtn">Next</button>
+    <label>
+      Jump to page: 
+      <input type="number" id="pageInput" min="1" step="1" />
+    </label>
+    <button id="jumpBtn">Go</button>
+    <div id="loading"></div>
+  </div>
 
-<table id="csvTable"></table>
+  <table id="csvTable"></table>
 
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-<script>
-  const CSV_API_BASE = "https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/data";
-  const ROWS_PER_PAGE = 10000;
-  let currentPage = 1;
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script>
+    const CSV_API_BASE = "https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/data";
+    const ROWS_PER_PAGE = 10000;
 
-  async function loadPage(page) {
-    const url = `${CSV_API_BASE}?page=${page}`;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to load data");
-      const csvText = await res.text();
+    let currentPage = 1;
 
-      // Parse CSV chunk with PapaParse
-      const parsed = Papa.parse(csvText, {
-        header: true,
-        skipEmptyLines: true,
-      });
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const jumpBtn = document.getElementById("jumpBtn");
+    const pageInput = document.getElementById("pageInput");
+    const loadingDiv = document.getElementById("loading");
+    const table = document.getElementById("csvTable");
 
-      const data = parsed.data;
-      const table = document.getElementById("csvTable");
+    async function loadPage(page) {
+      loadingDiv.textContent = "Loading page " + page + "…";
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      jumpBtn.disabled = true;
+      pageInput.disabled = true;
+
+      try {
+        const url = `${CSV_API_BASE}?page=${page}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Failed to load data (status ${res.status})`);
+        const csvText = await res.text();
+
+        const parsed = Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+        });
+        const data = parsed.data;
+
+        if (data.length === 0) {
+          if (page > 1) {
+            currentPage--;
+          }
+          renderTable([]);
+          loadingDiv.textContent = "No more data.";
+          updateButtons();
+          return;
+        }
+
+        renderTable(data);
+        currentPage = page;
+        loadingDiv.textContent = `Showing page ${currentPage} (${(currentPage-1)*ROWS_PER_PAGE + 1} - ${((currentPage-1)*ROWS_PER_PAGE + data.length)})`;
+        updateButtons();
+
+      } catch (err) {
+        loadingDiv.textContent = "Error: " + err.message;
+        renderTable([]);
+        updateButtons();
+      }
+    }
+
+    function renderTable(data) {
       table.innerHTML = "";
-
       if (data.length === 0) {
-        table.textContent = "No data found";
+        table.textContent = "No data to display.";
         return;
       }
-
-      // Build table header
       const headers = Object.keys(data[0]);
       const thead = document.createElement("thead");
       const headerRow = document.createElement("tr");
@@ -87,7 +181,6 @@
       thead.appendChild(headerRow);
       table.appendChild(thead);
 
-      // Build table body
       const tbody = document.createElement("tbody");
       data.forEach(row => {
         const tr = document.createElement("tr");
@@ -99,27 +192,42 @@
         tbody.appendChild(tr);
       });
       table.appendChild(tbody);
-
-      document.getElementById("pageInfo").textContent = `Page ${page}`;
-    } catch (err) {
-      alert(err.message);
     }
-  }
 
-  document.getElementById("prevBtn").addEventListener("click", () => {
-    if (currentPage > 1) {
-      currentPage--;
-      loadPage(currentPage);
+    function updateButtons() {
+      prevBtn.disabled = currentPage <= 1;
+      // Disable next if last page detected by no data or less than ROWS_PER_PAGE
+      // Since we don't know total pages, disable if loading empty page just handled in loadPage()
+      nextBtn.disabled = false;
+      jumpBtn.disabled = false;
+      pageInput.disabled = false;
     }
-  });
 
-  document.getElementById("nextBtn").addEventListener("click", () => {
-    currentPage++;
+    prevBtn.addEventListener("click", () => {
+      if (currentPage > 1) {
+        loadPage(currentPage - 1);
+      }
+    });
+
+    nextBtn.addEventListener("click", () => {
+      loadPage(currentPage + 1);
+    });
+
+    jumpBtn.addEventListener("click", () => {
+      const val = parseInt(pageInput.value);
+      if (val && val >= 1) {
+        loadPage(val);
+      }
+    });
+
+    pageInput.addEventListener("keyup", e => {
+      if (e.key === "Enter") {
+        jumpBtn.click();
+      }
+    });
+
+    // Load first page on start
     loadPage(currentPage);
-  });
-
-  loadPage(currentPage);
-</script>
-
+  </script>
 </body>
 </html>
