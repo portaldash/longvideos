@@ -1,110 +1,93 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>CSV Viewer</title>
+  <title>Long Videos</title>
   <style>
     body {
-      margin: 0;
+      background-color: #121212;
+      color: #ccc;
       font-family: monospace;
-      background: #111;
-      color: #eee;
     }
     table {
       width: 100%;
       border-collapse: collapse;
     }
-    th, td {
-      border: 1px solid #444;
-      padding: 2px 5px;
-    }
-    #controls {
-      padding: 10px;
-      background: #222;
-      position: sticky;
-      top: 0;
+    td, th {
+      border: 1px solid #333;
+      padding: 4px;
     }
     button {
-      background: #333;
-      color: #eee;
-      border: none;
+      margin: 10px;
       padding: 5px 10px;
-      margin-right: 5px;
-      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <div id="controls">
+  <h2>Long Videos</h2>
+  <div>
     <button onclick="prevPage()">Prev</button>
     <button onclick="nextPage()">Next</button>
-    <span id="status">Loading...</span>
+    <span id="status"></span>
   </div>
-  <div id="table-container"></div>
+  <table id="csvTable"></table>
 
   <script>
-    const CSV_URL = 'https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/long_videos.csv';
-    const ROWS_PER_PAGE = 10000;
-    let lines = [];
-    let page = 0;
+    let currentPage = 1;
+    const pageSize = 1000;
+    const apiUrl = "https://YOUR_REPLIT_URL/data";
 
-    async function fetchCSV() {
-      const res = await fetch(CSV_URL);
-      const text = await res.text();
-      lines = text.split('\n').filter(Boolean);
-      renderPage();
-    }
+    async function fetchPage(page) {
+      document.getElementById("status").textContent = `Loading page ${page}...`;
 
-    function renderPage() {
-      const start = page * ROWS_PER_PAGE;
-      const end = start + ROWS_PER_PAGE;
-      const current = lines.slice(start, end);
-      const table = document.createElement('table');
+      const res = await fetch(`${apiUrl}?page=${page}&size=${pageSize}`);
+      const json = await res.json();
+      const data = json.data;
 
-      if (current.length === 0) {
-        document.getElementById('table-container').innerHTML = '<p>No more data.</p>';
+      const table = document.getElementById("csvTable");
+      table.innerHTML = "";
+
+      if (data.length === 0) {
+        table.innerHTML = "<tr><td>No data</td></tr>";
         return;
       }
 
-      const header = current[0].split(',');
-      const headerRow = document.createElement('tr');
-      header.forEach(h => {
-        const th = document.createElement('th');
+      // Header
+      const headers = Object.keys(data[0]);
+      const headerRow = document.createElement("tr");
+      headers.forEach(h => {
+        const th = document.createElement("th");
         th.textContent = h;
         headerRow.appendChild(th);
       });
       table.appendChild(headerRow);
 
-      for (let i = 1; i < current.length; i++) {
-        const row = document.createElement('tr');
-        current[i].split(',').forEach(cell => {
-          const td = document.createElement('td');
-          td.textContent = cell;
-          row.appendChild(td);
+      // Rows
+      data.forEach(row => {
+        const tr = document.createElement("tr");
+        headers.forEach(h => {
+          const td = document.createElement("td");
+          td.textContent = row[h];
+          tr.appendChild(td);
         });
-        table.appendChild(row);
-      }
+        table.appendChild(tr);
+      });
 
-      document.getElementById('table-container').innerHTML = '';
-      document.getElementById('table-container').appendChild(table);
-      document.getElementById('status').textContent = `Page ${page + 1} (${start + 1}–${end})`;
+      document.getElementById("status").textContent = `Page ${page}`;
     }
 
     function nextPage() {
-      if ((page + 1) * ROWS_PER_PAGE < lines.length) {
-        page++;
-        renderPage();
-      }
+      currentPage++;
+      fetchPage(currentPage);
     }
 
     function prevPage() {
-      if (page > 0) {
-        page--;
-        renderPage();
+      if (currentPage > 1) {
+        currentPage--;
+        fetchPage(currentPage);
       }
     }
 
-    fetchCSV();
+    fetchPage(currentPage);
   </script>
 </body>
 </html>
