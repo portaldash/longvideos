@@ -1,321 +1,67 @@
 <!DOCTYPE html>
-<html lang="en" >
+<html>
 <head>
   <meta charset="UTF-8" />
-  <title>CSV Viewer - Master Edition</title>
+  <title>CSV Viewer</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Fira+Mono&display=swap');
-
-    /* Base dark theme */
     body {
-      margin: 0;
-      padding: 20px;
-      background-color: #0b1409;
-      color: #a5d6a7;
-      font-family: 'Fira Mono', monospace, monospace;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      user-select: none;
-    }
-    h1 {
-      margin-bottom: 1rem;
-      color: #81c784;
-      user-select: text;
-    }
-
-    /* Controls container */
-    #controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      align-items: center;
-      margin-bottom: 15px;
-      user-select: none;
-    }
-    button, select, input[type="number"] {
-      background: #123412;
-      border: 1.5px solid #4caf50;
-      color: #a5d6a7;
+      background: black;
+      color: #0f0;
       font-family: monospace;
-      font-size: 1rem;
-      padding: 8px 14px;
+      padding: 10px;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+    }
+    #controls {
+      margin-bottom: 10px;
+    }
+    button {
+      background: #111;
+      border: 1px solid #0f0;
+      color: #0f0;
+      padding: 5px 10px;
       cursor: pointer;
-      border-radius: 6px;
-      transition: background-color 0.25s ease, box-shadow 0.25s ease;
-      user-select: none;
-    }
-    button:hover:not(:disabled), select:hover, input[type="number"]:hover {
-      background: #1b491b;
-      box-shadow: 0 0 8px #66bb66aa;
-    }
-    button:disabled {
-      opacity: 0.4;
-      cursor: default;
-      box-shadow: none;
-    }
-    label {
-      font-size: 0.95rem;
-      user-select: text;
-    }
-    input[type="number"] {
-      width: 90px;
-      text-align: center;
-    }
-
-    /* Loading text with fade animation */
-    #loading {
-      font-style: italic;
-      min-width: 140px;
-      color: #82c28a;
-      user-select: none;
-      animation: pulse 2s infinite ease-in-out;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 0.6; }
-      50% { opacity: 1; }
-    }
-
-    /* Table styling */
-    .table-container {
-      overflow-x: auto;
-      flex-grow: 1;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      min-width: 700px;
-      font-size: 13px;
-      table-layout: fixed;
-      word-break: break-word;
-      box-shadow: 0 0 10px #1c3e1c88;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    thead {
-      position: sticky;
-      top: 0;
-      background: #234423cc;
-      box-shadow: 0 2px 6px #144214aa;
-      user-select: none;
-      z-index: 10;
-    }
-    th, td {
-      padding: 8px 12px;
-      border: 1px solid #3e7e3e;
-      text-align: left;
-      vertical-align: middle;
-      max-width: 280px;
-    }
-    tbody tr:hover {
-      background-color: #356935cc;
-      transition: background-color 0.3s ease;
-    }
-    tbody tr td a {
-      color: #90ee90;
-      text-decoration: none;
-    }
-    tbody tr td a:hover {
-      text-decoration: underline;
-    }
-
-    /* Responsive tweaks */
-    @media (max-width: 720px) {
-      body {
-        padding: 10px;
-      }
-      table {
-        min-width: 500px;
-      }
-      th, td {
-        font-size: 12px;
-        padding: 6px 8px;
-        max-width: 200px;
-      }
-      button, select, input[type="number"] {
-        padding: 6px 10px;
-        font-size: 0.9rem;
-      }
+      margin-right: 5px;
     }
   </style>
 </head>
 <body>
-  <h1>Long Videos CSV Viewer</h1>
 
-  <div id="controls">
-    <button id="prevBtn" disabled>Prev</button>
-    <button id="nextBtn">Next</button>
+<div id="controls">
+  <button id="prevBtn">Prev</button>
+  <span id="pageInfo">Page 1</span>
+  <button id="nextBtn">Next</button>
+</div>
 
-    <label for="pageInput">Jump to page:</label>
-    <input type="number" id="pageInput" min="1" step="1" aria-label="Page number input" />
-    <button id="jumpBtn">Go</button>
+<pre id="csvContent">Loading...</pre>
 
-    <label for="pageSizeSelect">Rows per page:</label>
-    <select id="pageSizeSelect" aria-label="Rows per page selector">
-      <option value="1000">1,000</option>
-      <option value="5000">5,000</option>
-      <option value="10000" selected>10,000</option>
-    </select>
+<script>
+  const CSV_API = "https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/data";
+  let currentPage = 1;
 
-    <div id="loading" aria-live="polite"></div>
-  </div>
-
-  <div class="table-container">
-    <table id="csvTable" role="grid" aria-label="CSV Data Table"></table>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <script>
-    const API_BASE = "https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/data";
-    let currentPage = 1;
-    let rowsPerPage = parseInt(document.getElementById('pageSizeSelect').value);
-
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
-    const jumpBtn = document.getElementById("jumpBtn");
-    const pageInput = document.getElementById("pageInput");
-    const pageSizeSelect = document.getElementById("pageSizeSelect");
-    const loadingDiv = document.getElementById("loading");
-    const table = document.getElementById("csvTable");
-
-    async function loadPage(page, pageSize) {
-      loadingDiv.textContent = `Loading page ${page} (${pageSize.toLocaleString()} rows)…`;
-      setControlsDisabled(true);
-
-      try {
-        const url = `${API_BASE}?page=${page}&size=${pageSize}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Failed to load data (status ${res.status})`);
-        const csvText = await res.text();
-
-        const parsed = Papa.parse(csvText, {
-          header: true,
-          skipEmptyLines: true,
-        });
-        const data = parsed.data;
-
-        if (data.length === 0) {
-          if (page > 1) {
-            currentPage--;
-          }
-          renderTable([]);
-          loadingDiv.textContent = "No more data.";
-          setControlsDisabled(false);
-          updateButtons();
-          return;
-        }
-
-        renderTable(data);
-        currentPage = page;
-        rowsPerPage = pageSize;
-        loadingDiv.textContent = `Page ${currentPage} — Rows ${(currentPage-1)*rowsPerPage + 1} to ${((currentPage-1)*rowsPerPage + data.length).toLocaleString()}`;
-        pageInput.value = currentPage;
-        updateButtons();
-      } catch (err) {
-        loadingDiv.textContent = "Error: " + err.message;
-        renderTable([]);
-        updateButtons();
-      }
+  async function loadPage(page) {
+    try {
+      const res = await fetch(`${CSV_API}?page=${page}`);
+      if (!res.ok) throw new Error("Failed to load CSV chunk");
+      const text = await res.text();
+      document.getElementById("csvContent").textContent = text;
+      document.getElementById("pageInfo").textContent = `Page ${page}`;
+      currentPage = page;
+    } catch (e) {
+      document.getElementById("csvContent").textContent = e.message;
     }
+  }
 
-    function renderTable(data) {
-      table.innerHTML = "";
-      if (data.length === 0) {
-        table.textContent = "No data to display.";
-        return;
-      }
-      const headers = Object.keys(data[0]);
-      const thead = document.createElement("thead");
-      const headerRow = document.createElement("tr");
-      headers.forEach(h => {
-        const th = document.createElement("th");
-        th.textContent = h;
-        headerRow.appendChild(th);
-      });
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
+  document.getElementById("prevBtn").onclick = () => {
+    if (currentPage > 1) loadPage(currentPage - 1);
+  };
 
-      const tbody = document.createElement("tbody");
-      data.forEach(row => {
-        const tr = document.createElement("tr");
-        headers.forEach(h => {
-          const td = document.createElement("td");
-          let val = row[h];
+  document.getElementById("nextBtn").onclick = () => {
+    loadPage(currentPage + 1);
+  };
 
-          // Make URLs clickable
-          if(typeof val === "string" && (val.startsWith("http://") || val.startsWith("https://"))) {
-            const a = document.createElement("a");
-            a.href = val;
-            a.target = "_blank";
-            a.rel = "noopener noreferrer";
-            a.textContent = val;
-            td.appendChild(a);
-          } else {
-            td.textContent = val;
-          }
+  loadPage(currentPage);
+</script>
 
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
-      table.appendChild(tbody);
-    }
-
-    function updateButtons() {
-      prevBtn.disabled = currentPage <= 1;
-      nextBtn.disabled = false;
-      setControlsDisabled(false);
-    }
-
-    function setControlsDisabled(state) {
-      prevBtn.disabled = state || currentPage <= 1;
-      nextBtn.disabled = state;
-      jumpBtn.disabled = state;
-      pageInput.disabled = state;
-      pageSizeSelect.disabled = state;
-    }
-
-    prevBtn.addEventListener("click", () => {
-      if (currentPage > 1) {
-        loadPage(currentPage - 1, rowsPerPage);
-      }
-    });
-
-    nextBtn.addEventListener("click", () => {
-      loadPage(currentPage + 1, rowsPerPage);
-    });
-
-    jumpBtn.addEventListener("click", () => {
-      const val = parseInt(pageInput.value);
-      if (val && val >= 1) {
-        loadPage(val, rowsPerPage);
-      }
-    });
-
-    pageInput.addEventListener("keyup", e => {
-      if (e.key === "Enter") {
-        jumpBtn.click();
-      }
-    });
-
-    pageSizeSelect.addEventListener("change", () => {
-      const newSize = parseInt(pageSizeSelect.value);
-      loadPage(1, newSize);
-    });
-
-    // Keyboard navigation (left/right arrows)
-    window.addEventListener("keydown", e => {
-      if(e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
-      if(e.key === "ArrowLeft" && currentPage > 1) {
-        loadPage(currentPage -1, rowsPerPage);
-      }
-      if(e.key === "ArrowRight") {
-        loadPage(currentPage +1, rowsPerPage);
-      }
-    });
-
-    // Initial load
-    loadPage(currentPage, rowsPerPage);
-  </script>
 </body>
 </html>
