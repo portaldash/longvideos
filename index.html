@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Long Videos Viewer</title>
+  <meta charset="UTF-8" />
+  <title>CSV Viewer</title>
   <style>
     body {
       margin: 0;
       font-family: monospace;
-      background-color: #111;
+      background: #111;
       color: #eee;
     }
     table {
@@ -15,93 +15,96 @@
       border-collapse: collapse;
     }
     th, td {
-      border: 1px solid #333;
-      padding: 4px;
-      text-align: left;
-    }
-    tr:nth-child(even) {
-      background-color: #1a1a1a;
-    }
-    button {
-      background: #222;
-      color: #eee;
-      border: 1px solid #555;
-      padding: 4px 8px;
-      margin: 10px 5px;
-      cursor: pointer;
+      border: 1px solid #444;
+      padding: 2px 5px;
     }
     #controls {
+      padding: 10px;
+      background: #222;
       position: sticky;
       top: 0;
-      background: #111;
-      padding: 10px;
+    }
+    button {
+      background: #333;
+      color: #eee;
+      border: none;
+      padding: 5px 10px;
+      margin-right: 5px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <div id="controls">
-    <button id="prev">← Prev</button>
-    <span id="page">Page 1</span>
-    <button id="next">Next →</button>
+    <button onclick="prevPage()">Prev</button>
+    <button onclick="nextPage()">Next</button>
+    <span id="status">Loading...</span>
   </div>
-  <table id="csv-table"></table>
+  <div id="table-container"></div>
 
   <script>
-    const CSV_URL = "https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/long_videos.csv";
+    const CSV_URL = 'https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/long_videos.csv';
     const ROWS_PER_PAGE = 10000;
-    let currentPage = 0;
-    let csvLines = [];
+    let lines = [];
+    let page = 0;
 
-    async function loadCSV() {
-      const response = await fetch(CSV_URL);
-      const text = await response.text();
-      csvLines = text.trim().split('\n');
-      renderTable();
+    async function fetchCSV() {
+      const res = await fetch(CSV_URL);
+      const text = await res.text();
+      lines = text.split('\n').filter(Boolean);
+      renderPage();
     }
 
-    function renderTable() {
-      const table = document.getElementById("csv-table");
-      table.innerHTML = "";
+    function renderPage() {
+      const start = page * ROWS_PER_PAGE;
+      const end = start + ROWS_PER_PAGE;
+      const current = lines.slice(start, end);
+      const table = document.createElement('table');
 
-      const start = currentPage * ROWS_PER_PAGE;
-      const end = Math.min(start + ROWS_PER_PAGE, csvLines.length);
-
-      const header = document.createElement("tr");
-      for (const col of csvLines[0].split(",")) {
-        const th = document.createElement("th");
-        th.textContent = col;
-        header.appendChild(th);
+      if (current.length === 0) {
+        document.getElementById('table-container').innerHTML = '<p>No more data.</p>';
+        return;
       }
-      table.appendChild(header);
 
-      for (let i = start + 1; i < end; i++) {
-        const row = document.createElement("tr");
-        for (const cell of csvLines[i].split(",")) {
-          const td = document.createElement("td");
+      const header = current[0].split(',');
+      const headerRow = document.createElement('tr');
+      header.forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      table.appendChild(headerRow);
+
+      for (let i = 1; i < current.length; i++) {
+        const row = document.createElement('tr');
+        current[i].split(',').forEach(cell => {
+          const td = document.createElement('td');
           td.textContent = cell;
           row.appendChild(td);
-        }
+        });
         table.appendChild(row);
       }
 
-      document.getElementById("page").textContent = `Page ${currentPage + 1} (${start + 1}–${end} of ${csvLines.length})`;
+      document.getElementById('table-container').innerHTML = '';
+      document.getElementById('table-container').appendChild(table);
+      document.getElementById('status').textContent = `Page ${page + 1} (${start + 1}–${end})`;
     }
 
-    document.getElementById("prev").addEventListener("click", () => {
-      if (currentPage > 0) {
-        currentPage--;
-        renderTable();
+    function nextPage() {
+      if ((page + 1) * ROWS_PER_PAGE < lines.length) {
+        page++;
+        renderPage();
       }
-    });
+    }
 
-    document.getElementById("next").addEventListener("click", () => {
-      if ((currentPage + 1) * ROWS_PER_PAGE < csvLines.length) {
-        currentPage++;
-        renderTable();
+    function prevPage() {
+      if (page > 0) {
+        page--;
+        renderPage();
       }
-    });
+    }
 
-    loadCSV();
+    fetchCSV();
   </script>
 </body>
 </html>
