@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>longvideos</title>
@@ -7,72 +7,84 @@
     body {
       background: #121212;
       color: #eee;
-      font-family: "Consolas", monospace;
+      font-family: 'Fira Mono', monospace;
       margin: 0;
       padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       min-height: 100vh;
+      text-align: center;
     }
     #container {
       max-width: 900px;
+      margin: 0 auto;
       width: 100%;
     }
+    #description {
+      margin-bottom: 1.5em;
+      font-size: 1rem;
+      line-height: 1.5;
+      color: #bbb;
+      text-align: center;
+    }
     #controls {
-      margin-bottom: 12px;
       display: flex;
       justify-content: center;
-      align-items: center;
-      gap: 12px;
+      gap: 10px;
+      margin-bottom: 15px;
     }
     button {
       background: #222;
-      border: 1px solid #555;
+      border: 1.5px solid #555;
       color: #eee;
-      padding: 8px 24px;
+      padding: 10px 25px;
+      font-size: 1rem;
       cursor: pointer;
-      border-radius: 4px;
-      font-weight: 600;
-      transition: background-color 0.3s, border-color 0.3s;
+      border-radius: 5px;
+      transition: all 0.2s ease;
+      user-select: none;
     }
-    button:hover:not(:disabled) {
+    button:hover {
       background: #444;
       border-color: #aaa;
-    }
-    button:disabled {
-      opacity: 0.4;
-      cursor: default;
+      color: #fff;
     }
     #pageInfo {
-      font-weight: 700;
+      display: flex;
+      align-items: center;
+      font-weight: 600;
       font-size: 1.1rem;
+      color: #ccc;
       user-select: none;
       min-width: 80px;
-      text-align: center;
+      justify-content: center;
     }
-    pre {
-      background: #1e1e1e;
-      padding: 15px;
-      border-radius: 6px;
-      max-height: 70vh;
-      overflow: auto;
+    pre#csvContent {
       white-space: pre-wrap;
       word-break: break-word;
       font-size: 0.9rem;
       line-height: 1.4;
-      box-shadow: inset 0 0 8px #0008;
-      user-select: text;
+      padding: 0;
+      margin: 0;
+      background: none;
+      border: none;
+      box-shadow: none;
+      overflow: visible; /* no scrollbars */
+      text-align: left;
     }
   </style>
 </head>
 <body>
-
   <div id="container">
+    <p id="description">
+      hi welcome to my page with the longest videos i could find on youtube<br />
+      sorry abt the pagination but it crashes your browser loading 500k lines of text LOL<br/>
+      im constantly finding new vids so this and the playlist with the top 5000 should update every day<br/>
+      the file is <a href="https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/long_videos.csv"> here </a>
+    </p>
+
     <div id="controls">
-      <button id="prevBtn" disabled>Prev</button>
+      <button id="prevBtn" aria-label="Previous Page">Prev</button>
       <span id="pageInfo">Page 1</span>
-      <button id="nextBtn">Next</button>
+      <button id="nextBtn" aria-label="Next Page">Next</button>
     </div>
 
     <pre id="csvContent">Loading...</pre>
@@ -86,22 +98,16 @@
       try {
         const res = await fetch(`${CSV_API}?page=${page}`);
         if (!res.ok) throw new Error("Failed to load CSV chunk");
-
         const text = await res.text();
 
-        // If page 1 and no data (empty), show message
-        if (page < 1) page = 1;
+        if (text.trim() === "") {
+          // No more pages; don't advance
+          return;
+        }
 
-        document.getElementById("csvContent").textContent = text || "No data available.";
+        document.getElementById("csvContent").textContent = text;
         document.getElementById("pageInfo").textContent = `Page ${page}`;
         currentPage = page;
-
-        // Disable Prev button on first page
-        document.getElementById("prevBtn").disabled = (page <= 1);
-
-        // Disable Next button if returned data is empty (end of file)
-        document.getElementById("nextBtn").disabled = (text.trim().length === 0);
-
       } catch (e) {
         document.getElementById("csvContent").textContent = e.message;
       }
@@ -117,6 +123,5 @@
 
     loadPage(currentPage);
   </script>
-
 </body>
 </html>
