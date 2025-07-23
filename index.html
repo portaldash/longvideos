@@ -7,30 +7,67 @@
     body { font-family: sans-serif; padding: 20px; }
     table { border-collapse: collapse; width: 100%; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    thead { background: #f4f4f4; }
+    thead { background: #f4f4f4; position: sticky; top: 0; }
+    .pagination { margin-top: 20px; }
+    .pagination button { padding: 8px 12px; margin: 0 2px; }
   </style>
 </head>
 <body>
-  <h1>📺 Long YouTube Videos</h1>
-  <div id="csv">Loading table...</div>
+  <h1>📺 Long YouTube Videos (Paginated)</h1>
+  <div id="table-container">Loading...</div>
+  <div class="pagination">
+    <button onclick="prevPage()">⬅ Prev</button>
+    <span id="page-info">Page 1</span>
+    <button onclick="nextPage()">Next ➡</button>
+    <input type="number" id="page-input" placeholder="Page #" style="width:60px" />
+    <button onclick="goToPage()">Go</button>
+  </div>
 
   <script>
+    const PAGE_SIZE = 10000;
+    let currentPage = 0;
+    let allRows = [];
+
     async function loadCSV() {
       const res = await fetch('https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/long_videos.csv');
       const text = await res.text();
-      const rows = text.trim().split('\n').map(r => r.split(','));
-      const table = `
+      allRows = text.trim().split('\n').map(r => r.split(','));
+      renderPage(0);
+    }
+
+    function renderPage(page) {
+      currentPage = page;
+      const start = page * PAGE_SIZE + 1;
+      const end = Math.min(start + PAGE_SIZE, allRows.length);
+      const rows = allRows.slice(start, end);
+      const header = allRows[0];
+      const html = `
         <table>
-          <thead><tr>${rows[0].map(h => `<th>${h}</th>`).join('')}</tr></thead>
+          <thead><tr>${header.map(h => `<th>${h}</th>`).join('')}</tr></thead>
           <tbody>
-            ${rows.slice(1).map(row => `<tr>${row.map(col => `<td>${col}</td>`).join('')}</tr>`).join('')}
+            ${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}
           </tbody>
         </table>`;
-      document.getElementById('csv').innerHTML = table;
+      document.getElementById('table-container').innerHTML = html;
+      document.getElementById('page-info').textContent = `Page ${page + 1} / ${Math.ceil((allRows.length - 1) / PAGE_SIZE)}`;
+    }
+
+    function prevPage() {
+      if (currentPage > 0) renderPage(currentPage - 1);
+    }
+
+    function nextPage() {
+      if ((currentPage + 1) * PAGE_SIZE < allRows.length - 1) renderPage(currentPage + 1);
+    }
+
+    function goToPage() {
+      const page = parseInt(document.getElementById('page-input').value, 10) - 1;
+      if (!isNaN(page) && page >= 0 && page * PAGE_SIZE < allRows.length) {
+        renderPage(page);
+      }
     }
 
     loadCSV();
-    setInterval(loadCSV, 24 * 60 * 60 * 1000); // reload once per day
   </script>
 </body>
 </html>
