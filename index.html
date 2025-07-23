@@ -2,14 +2,13 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>Long Videos</title>
+  <title>CSV Viewer</title>
   <style>
     body {
       background-color: #121212;
       color: #eee;
       font-family: monospace;
-      margin: 0;
-      padding: 10px;
+      margin: 0; padding: 10px;
     }
     table {
       width: 100%;
@@ -19,95 +18,50 @@
     th, td {
       border: 1px solid #444;
       padding: 4px;
-      text-align: left;
     }
     tr:nth-child(even) {
       background-color: #1e1e1e;
     }
-    button {
-      margin: 5px;
-      padding: 5px 10px;
-      background-color: #222;
-      color: #eee;
-      border: none;
-      cursor: pointer;
-    }
-    #controls {
-      margin-bottom: 10px;
-    }
   </style>
 </head>
 <body>
-  <h1>Long Videos</h1>
-  <div id="controls">
-    <button id="prev">Prev</button>
-    <span id="pageInfo">Page 1</span>
-    <button id="next">Next</button>
-  </div>
-  <table id="table"></table>
+  <h1>Long Videos CSV</h1>
+  <div id="loading">Loading CSV…</div>
+  <table id="csvTable"></table>
 
   <script>
-    const apiBase = "https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/data";
-    const pageSize = 1000;
-    let currentPage = 1;
-    let totalRows = 0;
+    async function loadCSV() {
+      const res = await fetch("https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/long_videos.csv");
+      const text = await res.text();
 
-    async function loadPage(page) {
-      const url = `${apiBase}?page=${page}&size=${pageSize}`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        alert("Failed to load data");
-        return;
-      }
-      const json = await res.json();
-      totalRows = json.totalRows || 0;
+      const rows = text.trim().split('\n').map(r => r.split(','));
+      const table = document.getElementById('csvTable');
+      table.innerHTML = '';
 
-      const table = document.getElementById("table");
-      table.innerHTML = "";
-
-      if (json.data.length === 0) {
-        table.innerHTML = "<tr><td>No data found</td></tr>";
-        return;
-      }
-
-      // Header row
-      const headerRow = document.createElement("tr");
-      Object.keys(json.data[0]).forEach(col => {
-        const th = document.createElement("th");
-        th.textContent = col;
+      // Header
+      const headerRow = document.createElement('tr');
+      rows[0].forEach(h => {
+        const th = document.createElement('th');
+        th.textContent = h;
         headerRow.appendChild(th);
       });
       table.appendChild(headerRow);
 
       // Data rows
-      json.data.forEach(row => {
-        const tr = document.createElement("tr");
-        Object.values(row).forEach(cell => {
-          const td = document.createElement("td");
+      for(let i = 1; i < rows.length; i++) {
+        const tr = document.createElement('tr');
+        rows[i].forEach(cell => {
+          const td = document.createElement('td');
           td.textContent = cell;
           tr.appendChild(td);
         });
         table.appendChild(tr);
-      });
+      }
 
-      document.getElementById("pageInfo").textContent = `Page ${page} (${(page-1)*pageSize + 1} - ${Math.min(page*pageSize, totalRows)} of ~${totalRows})`;
+      document.getElementById('loading').textContent = '';
     }
 
-    document.getElementById("prev").onclick = () => {
-      if (currentPage > 1) {
-        currentPage--;
-        loadPage(currentPage);
-      }
-    };
-
-    document.getElementById("next").onclick = () => {
-      if ((currentPage * pageSize) < totalRows) {
-        currentPage++;
-        loadPage(currentPage);
-      }
-    };
-
-    loadPage(currentPage);
+    loadCSV();
   </script>
 </body>
 </html>
