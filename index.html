@@ -2,66 +2,121 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>CSV Viewer</title>
+  <title>longvideos</title>
   <style>
     body {
-      background: black;
-      color: #fff;
-      font-family: monospace;
-      padding: 1px;
-      white-space: pre-wrap;
-      overflow-wrap: break-word;
+      background: #121212;
+      color: #eee;
+      font-family: "Consolas", monospace;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    #container {
+      max-width: 900px;
+      width: 100%;
     }
     #controls {
-      margin-bottom: 1px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
     }
     button {
-      background: #111;
-      border: 1px solid #fff;
-      color: #fff;
-      padding: 5px 20px;
+      background: #222;
+      border: 1px solid #555;
+      color: #eee;
+      padding: 8px 24px;
       cursor: pointer;
-      margin-right: 5px;
+      border-radius: 4px;
+      font-weight: 600;
+      transition: background-color 0.3s, border-color 0.3s;
+    }
+    button:hover:not(:disabled) {
+      background: #444;
+      border-color: #aaa;
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+    #pageInfo {
+      font-weight: 700;
+      font-size: 1.1rem;
+      user-select: none;
+      min-width: 80px;
+      text-align: center;
+    }
+    pre {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 6px;
+      max-height: 70vh;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      box-shadow: inset 0 0 8px #0008;
+      user-select: text;
     }
   </style>
 </head>
 <body>
 
-<div id="controls">
-  <button id="prevBtn">Prev</button>
-  <span id="pageInfo">Page 1</span>
-  <button id="nextBtn">Next</button>
-</div>
+  <div id="container">
+    <div id="controls">
+      <button id="prevBtn" disabled>Prev</button>
+      <span id="pageInfo">Page 1</span>
+      <button id="nextBtn">Next</button>
+    </div>
 
-<pre id="csvContent">Loading...</pre>
+    <pre id="csvContent">Loading...</pre>
+  </div>
 
-<script>
-  const CSV_API = "https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/data";
-  let currentPage = 1;
+  <script>
+    const CSV_API = "https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/data";
+    let currentPage = 1;
 
-  async function loadPage(page) {
-    try {
-      const res = await fetch(`${CSV_API}?page=${page}`);
-      if (!res.ok) throw new Error("Failed to load CSV chunk");
-      const text = await res.text();
-      document.getElementById("csvContent").textContent = text;
-      document.getElementById("pageInfo").textContent = `Page ${page}`;
-      currentPage = page;
-    } catch (e) {
-      document.getElementById("csvContent").textContent = e.message;
+    async function loadPage(page) {
+      try {
+        const res = await fetch(`${CSV_API}?page=${page}`);
+        if (!res.ok) throw new Error("Failed to load CSV chunk");
+
+        const text = await res.text();
+
+        // If page 1 and no data (empty), show message
+        if (page < 1) page = 1;
+
+        document.getElementById("csvContent").textContent = text || "No data available.";
+        document.getElementById("pageInfo").textContent = `Page ${page}`;
+        currentPage = page;
+
+        // Disable Prev button on first page
+        document.getElementById("prevBtn").disabled = (page <= 1);
+
+        // Disable Next button if returned data is empty (end of file)
+        document.getElementById("nextBtn").disabled = (text.trim().length === 0);
+
+      } catch (e) {
+        document.getElementById("csvContent").textContent = e.message;
+      }
     }
-  }
 
-  document.getElementById("prevBtn").onclick = () => {
-    if (currentPage > 1) loadPage(currentPage - 1);
-  };
+    document.getElementById("prevBtn").onclick = () => {
+      if (currentPage > 1) loadPage(currentPage - 1);
+    };
 
-  document.getElementById("nextBtn").onclick = () => {
-    loadPage(currentPage + 1);
-  };
+    document.getElementById("nextBtn").onclick = () => {
+      loadPage(currentPage + 1);
+    };
 
-  loadPage(currentPage);
-</script>
+    loadPage(currentPage);
+  </script>
 
 </body>
 </html>
