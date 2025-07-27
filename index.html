@@ -67,7 +67,7 @@
       background: none;
       border: none;
       box-shadow: none;
-      overflow: visible; /* no scrollbars */
+      overflow: visible;
       text-align: left;
     }
   </style>
@@ -78,7 +78,7 @@
       hi welcome to my page with the longest videos i could find on youtube<br />
       sorry abt the pagination but it crashes your browser loading 500k lines of text LOL<br/>
       im constantly finding new vids so this and the playlist with the top 5000 should update every day<br/>
-      the file is <a href="https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/long_videos.csv"> here </a>
+      the file is <a href="https://raw.githubusercontent.com/portaldash/longvideos/main/long_videos.csv" target="_blank">here</a>
     </p>
 
     <div id="controls">
@@ -91,37 +91,47 @@
   </div>
 
   <script>
-    const CSV_API = "https://1b2e6f8d-d553-4f38-8e9a-f432ecd32939-00-f6ednmntwg59.picard.replit.dev/data";
+    const CSV_URL = "https://raw.githubusercontent.com/portaldash/longvideos/main/long_videos.csv";
+    const linesPerPage = 1000;
+    let csvLines = [];
     let currentPage = 1;
 
-    async function loadPage(page) {
-      try {
-        const res = await fetch(`${CSV_API}?page=${page}`);
-        if (!res.ok) throw new Error("Failed to load CSV chunk");
-        const text = await res.text();
+    async function fetchCSV() {
+      const res = await fetch(CSV_URL);
+      if (!res.ok) throw new Error("Failed to load CSV");
+      const text = await res.text();
+      csvLines = text.split("\n");
+    }
 
-        if (text.trim() === "") {
-          // No more pages; don't advance
-          return;
-        }
-
-        document.getElementById("csvContent").textContent = text;
-        document.getElementById("pageInfo").textContent = `Page ${page}`;
-        currentPage = page;
-      } catch (e) {
-        document.getElementById("csvContent").textContent = e.message;
-      }
+    function renderPage(page) {
+      const start = (page - 1) * linesPerPage;
+      const end = start + linesPerPage;
+      const pageLines = csvLines.slice(start, end);
+      document.getElementById("csvContent").textContent = pageLines.join("\n");
+      document.getElementById("pageInfo").textContent = `Page ${page}`;
     }
 
     document.getElementById("prevBtn").onclick = () => {
-      if (currentPage > 1) loadPage(currentPage - 1);
+      if (currentPage > 1) {
+        currentPage--;
+        renderPage(currentPage);
+      }
     };
 
     document.getElementById("nextBtn").onclick = () => {
-      loadPage(currentPage + 1);
+      const maxPage = Math.ceil(csvLines.length / linesPerPage);
+      if (currentPage < maxPage) {
+        currentPage++;
+        renderPage(currentPage);
+      }
     };
 
-    loadPage(currentPage);
+    // Init
+    fetchCSV().then(() => {
+      renderPage(currentPage);
+    }).catch(err => {
+      document.getElementById("csvContent").textContent = err.message;
+    });
   </script>
 </body>
 </html>
